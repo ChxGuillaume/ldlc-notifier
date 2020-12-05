@@ -52,7 +52,7 @@ class TelegramBot {
             this.addChatID(ctx.from.id);
 
             const sender_name = ctx.from.first_name;
-            ctx.reply(`Hello ${sender_name},\n\nWelcome to our Tech Products Notifier.\nWe are actually checking for stocks of products on http://www.ldlc.com`).then();
+            ctx.reply(`Hello ${sender_name},\n\nWelcome to our Tech Products Notifier.\nWe are currently checking for stocks of products on http://www.ldlc.com`).then();
         });
 
         this.bot_listener.help((ctx) => ctx.reply('Send me a sticker'));
