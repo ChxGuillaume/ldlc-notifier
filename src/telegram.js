@@ -89,7 +89,7 @@ class TelegramBot {
             }).then()
         });
 
-        this.bot_listener.command('unsubscribe', ({from: { id: chatID }, reply}) => {
+        this.bot_listener.command('unsubscribe', ({from: {id: chatID}, reply}) => {
             const keyboard_options = [
                 {
                     text: '3090',
@@ -199,7 +199,7 @@ class TelegramBot {
 
     broadcastProductUpdate(product) {
         for (const id of this.chats) {
-            this.sendProductUpdate(id, product).then();
+            this.sendProductUpdate(id, product);
         }
     }
 
