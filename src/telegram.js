@@ -157,7 +157,6 @@ class TelegramBot {
                 case 'product_3080':
                     return e.product_name.includes('3080');
                 case 'product_zen3':
-                    console.log(e.product_name)
                     return e.product_name.includes('AMD');
                 default:
                     return true;
