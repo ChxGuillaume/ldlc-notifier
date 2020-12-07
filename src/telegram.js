@@ -193,7 +193,7 @@ class TelegramBot {
         else if (product.product_name.includes('3080')) unsubscribe_check = 'unsubscribe_';
         else if (product.product_name.includes('AMD')) unsubscribe_check = 'unsubscribe_';
 
-        if (!this.chats_unsubscribe[chat_id] || !this.chats_unsubscribe[chat_id].includes(unsubscribe_check))
+        if ((!this.chats_unsubscribe[chat_id] || !this.chats_unsubscribe[chat_id].includes(unsubscribe_check)) && product.stock_status !== '9')
             this.bot.sendMessage(chat_id, `${product.product_name} status:\n${product.stock_raw}\n${product.product_link}`).then();
     }
 
