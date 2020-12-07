@@ -71,6 +71,7 @@ class Checker {
                     stock_text = 'In Stock'.green;
                     break;
                 case '3':
+                case '4':
                     stock_raw = 'Within 7 days';
                     stock_text = 'Within 7 days'.yellow;
                     break;
