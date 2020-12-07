@@ -166,7 +166,8 @@ class TelegramBot {
 
 
         for (const stock of products) {
-            reply(`${stock.product_name} status:\n${stock.stock_raw}\n${stock.product_link}`).then();
+            if (stock.stock_status !== '9')
+                reply(`${stock.product_name} status:\n${stock.stock_raw}\n${stock.product_link}`).then();
         }
     }
 
