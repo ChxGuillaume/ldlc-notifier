@@ -72,7 +72,7 @@ class LDLCChecker {
             const product_title_element = document.querySelector(product_id).querySelector('.title-3').querySelector('a');
             const product_link = product_title_element.href;
             const product_name = product_title_element.innerHTML.replace(/ +(?= )|\n/g, '');
-            const product_price = parseFloat(prices_matches.find(e => e.includes(product_id)).match(/[0-9]*€<sup>[0-9]*<\/sup>/g)[0].replace(/€<sup>|<\/sup>/g, '.'));
+            const product_price = parseFloat(prices_matches.find(e => e.includes(product_id)).replace('&nbsp;', '').match(/[0-9 ]*€<sup>[0-9]*<\/sup>/g)[0].replace(/€<sup>|<\/sup>/g, '.'));
 
             const stock_status = Array.from(match.matchAll(stock_regex))[0][1];
             let stock_raw = `Unknown (${stock_status})`;
