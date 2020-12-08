@@ -5,28 +5,32 @@ const fs = require('fs');
 const path = require('path');
 const {Telegraf, Telegram} = require('telegraf');
 
-const checker = require('./checker/checker');
+const ldlcChecker = require('./checker/ldlc');
+const caseKingChecker = require('./checker/caseking');
 
 class TelegramBot {
+    static __chat_ids_file = path.resolve(__dirname, 'data/chat_ids.json');
+    static __notification_filters_file = path.resolve(__dirname, 'data/chat_filters.json');
+
     bot_listener = new Telegraf(process.env.TELEGRAM_TOKEN);
     bot = new Telegram(process.env.TELEGRAM_TOKEN);
     chats = [];
     chats_unsubscribe = {};
 
     constructor() {
-        fs.access(path.resolve(__dirname, 'chat_ids.json'), fs.constants.F_OK, (err) => {
+        fs.access(TelegramBot.__chat_ids_file, fs.constants.F_OK, (err) => {
             if (err) this.saveData();
-            else this.chats = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'chat_ids.json'), {encoding: 'utf-8'}));
+            else this.chats = JSON.parse(fs.readFileSync(TelegramBot.__chat_ids_file, {encoding: 'utf-8'}));
         });
 
-        fs.access(path.resolve(__dirname, 'chat_filters.json'), fs.constants.F_OK, (err) => {
+        fs.access(TelegramBot.__notification_filters_file, fs.constants.F_OK, (err) => {
             if (err) this.saveData();
-            else this.chats_unsubscribe = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'chat_filters.json'), {encoding: 'utf-8'}));
+            else this.chats_unsubscribe = JSON.parse(fs.readFileSync(TelegramBot.__notification_filters_file, {encoding: 'utf-8'}));
         });
 
         this.initBot();
 
-        checker.addEventsCallback((product) => {
+        ldlcChecker.addEventsCallback((product) => {
             console.log('notification sent!')
             this.broadcastProductUpdate(product);
         });
@@ -57,11 +61,13 @@ class TelegramBot {
 
         this.bot_listener.help((ctx) => ctx.reply('Send me a sticker'));
 
-        this.bot_listener.on('callback_query', ({reply, answerCbQuery, from: {id: chatId}, update: {callback_query}}) => {
+        this.bot_listener.on('callback_query', (context) => {
+            const {reply, answerCbQuery, from: {id: chatId}, update: {callback_query}} = context;
+
             this.bot.deleteMessage(chatId, callback_query.message.message_id).then();
             answerCbQuery().then();
 
-            if (callback_query.data.includes('product_')) this.sendProductsStocks(callback_query.data, reply);
+            if (callback_query.data.includes('product_')) this.sendProductsStocks(callback_query.data, chatId);
             else if (callback_query.data.includes('unsubscribe_')) this.unsubscribeProductsList(chatId, callback_query.data, reply);
             else if (callback_query.data.includes('subscribe_')) this.subscribeProductsList(chatId, callback_query.data, reply);
         });
@@ -116,7 +122,7 @@ class TelegramBot {
             }
         });
 
-        this.bot_listener.command('subscribe', ({from: { id: chatID }, reply}) => {
+        this.bot_listener.command('subscribe', ({from: {id: chatID}, reply}) => {
             const keyboard_options = [
                 {
                     text: '3090',
@@ -149,8 +155,8 @@ class TelegramBot {
         this.bot_listener.launch().then();
     }
 
-    sendProductsStocks(products_value, reply) {
-        const products = Object.values(checker.stocks).filter(e => {
+    sendProductsStocks(products_value, chat_id) {
+        const products = Object.values(ldlcChecker.stocks).filter(e => {
             switch (products_value) {
                 case 'product_3090':
                     return e.product_name.includes('3090');
@@ -164,9 +170,8 @@ class TelegramBot {
         });
 
 
-        for (const stock of products) {
-            if (stock.stock_status !== '9')
-                reply(`${stock.product_name} status:\n${stock.stock_raw}\n${stock.product_link}`).then();
+        for (const product of products) {
+            this.sendProductUpdate(chat_id, product, true);
         }
     }
 
@@ -187,14 +192,30 @@ class TelegramBot {
         reply(`You've successfully been subscribed to the list: ${callback_data.replace('subscribe_', '')}`);
     }
 
-    sendProductUpdate(chat_id, product) {
+    sendProductUpdate(chat_id, product, no_filter = false) {
         let unsubscribe_check = '';
-        if (product.product_name.includes('3090')) unsubscribe_check = 'unsubscribe_';
-        else if (product.product_name.includes('3080')) unsubscribe_check = 'unsubscribe_';
-        else if (product.product_name.includes('AMD')) unsubscribe_check = 'unsubscribe_';
+        if (!no_filter) {
+            if (product.product_name.includes('3090')) unsubscribe_check = 'unsubscribe_3090';
+            else if (product.product_name.includes('3080')) unsubscribe_check = 'unsubscribe_3080';
+            else if (product.product_name.includes('AMD')) unsubscribe_check = 'unsubscribe_zen3';
+        }
 
         if ((!this.chats_unsubscribe[chat_id] || !this.chats_unsubscribe[chat_id].includes(unsubscribe_check)) && product.stock_status !== '9')
-            this.bot.sendMessage(chat_id, `${product.product_name} status:\n${product.stock_raw}\n${product.product_link}`).then();
+            this.bot.sendMessage(
+                chat_id,
+                `[${product.product_name}](${product.product_link}) \nStatus: ${product.stock_raw}    -    Price: ${product.product_price}€`, {
+                    parse_mode: 'markdown',
+                    reply_markup: {
+                        inline_keyboard: [
+                            [
+                                {
+                                    text: 'Product Page',
+                                    url: product.product_link
+                                },
+                            ]
+                        ]
+                    }
+                }).then();
     }
 
     broadcastProductUpdate(product) {
@@ -204,8 +225,8 @@ class TelegramBot {
     }
 
     saveData() {
-        fs.writeFileSync(path.resolve(__dirname, 'chat_ids.json'), JSON.stringify(this.chats));
-        fs.writeFileSync(path.resolve(__dirname, 'chat_filters.json'), JSON.stringify(this.chats_unsubscribe));
+        fs.writeFileSync(TelegramBot.__chat_ids_file, JSON.stringify(this.chats));
+        fs.writeFileSync(TelegramBot.__notification_filters_file, JSON.stringify(this.chats_unsubscribe));
     }
 
     addChatID(id) {

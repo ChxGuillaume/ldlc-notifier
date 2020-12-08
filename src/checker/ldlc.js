@@ -12,14 +12,19 @@ const {JSDOM} = require("jsdom");
  * 4: -7 days
  * 2: In Stock
  * 1: In Stock
- * **/
+ **/
 
-class Checker {
+class LDLCChecker {
+    static __datafile = path.resolve(__dirname, 'data/ldlc-products.json');
+
     stocks = {};
     callbacks = [];
 
     constructor() {
-        this.stocks = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'data.json'), { encoding: 'utf-8' }));
+        fs.access(LDLCChecker.__datafile, fs.constants.F_OK, (err) => {
+            if (err) this.saveData();
+            else this.stocks = JSON.parse(fs.readFileSync(LDLCChecker.__datafile, { encoding: 'utf-8' }).toString());
+        });
 
         this.initFetch();
     }
@@ -48,17 +53,20 @@ class Checker {
 
         document.querySelector('header').remove();
 
-        const regex = /\$\(".*<div class="modal-stock-web.*<\/div>.*\);/gm;
         const id_regex = /#pdt-[A-z0-9]*/gm;
+        const stocks_regex = /\$\(".*<div class="modal-stock-web.*<\/div>.*\);/gm;
+        const price_regex = /\$\(".*<div class="price.*<\/div>.*\);/gm;
         const stock_regex = /data-stock-web="([0-9])"/gm
 
-        const matches = document.body.innerHTML.match(regex);
+        const stocks_matchs = document.body.innerHTML.match(stocks_regex);
+        const prices_matches = document.body.innerHTML.match(price_regex);
 
-        for (const match of matches) {
+        for (const match of stocks_matchs) {
             const product_id = match.match(id_regex)[0];
             const product_title_element = document.querySelector(product_id).querySelector('.title-3').querySelector('a');
             const product_link = product_title_element.href;
             const product_name = product_title_element.innerHTML.replace(/ +(?= )|\n/g, '');
+            const product_price = parseFloat(prices_matches.find(e => e.includes(product_id)).match(/[0-9]*€<sup>[0-9]*<\/sup>/g)[0].replace(/€<sup>|<\/sup>/g, '.'));
 
             const stock_status = Array.from(match.matchAll(stock_regex))[0][1];
             let stock_raw = `Unknown (${stock_status})`;
@@ -91,6 +99,7 @@ class Checker {
 
             const product_object = {
                 product_name,
+                product_price,
                 product_link: `https://www.ldlc.com${product_link}`,
                 stock_status,
                 stock_raw,
@@ -100,19 +109,24 @@ class Checker {
             if (!this.stocks[product_id] || stock_status !== this.stocks[product_id].stock_status) {
                 this.callbacks.forEach(callback => callback(product_object));
 
-                console.log(product_name.yellow, 'stock status:'.gray, stock_text);
+                console.log(product_name.cyan);
+                console.log('stock status:'.gray, stock_text, 'price:'.gray, `${product_price}€`);
                 console.log(`https://www.ldlc.com${product_link}`);
             }
 
             this.stocks[product_id] = product_object;
         }
 
-        fs.writeFileSync(path.resolve(__dirname, 'data.json'), JSON.stringify(this.stocks));
+        this.saveData();
     }
 
     addEventsCallback(callback) {
         this.callbacks.push(callback);
     }
+
+    saveData() {
+        fs.writeFileSync(LDLCChecker.__datafile, JSON.stringify(this.stocks));
+    }
 }
 
-module.exports = new Checker();
+module.exports = new LDLCChecker();
