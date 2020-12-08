@@ -91,12 +91,13 @@ class CaseKingChecker {
                 in_stock: stock_status !== '4'
             };
 
-            if (!this.stocks[product_id] || stock_status !== this.stocks[product_id].stock_status) {
-                this.callbacks.forEach(callback => callback(product_object));
+            if (this.stocks[product_id]) {
+                if (stock_status !== this.stocks[product_id].stock_status) {
+                    this.callbacks.forEach(callback => callback(product_object));
 
-                console.log(product_name.cyan);
-                console.log('stock status:'.gray, stock_text, 'price:'.gray, `${product_price}€`);
-                console.log(`${product_link}`);
+                    console.log(product_name.cyan);
+                    console.log('stock status:'.gray, stock_text, 'price:'.gray, `${product_price}€`);
+                }
             }
 
             this.stocks[product_id] = product_object;
