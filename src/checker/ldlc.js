@@ -3,7 +3,8 @@ const path = require('path');
 const axios = require('axios');
 const colors = require('colors');
 const CronJob = require('cron').CronJob;
-const {JSDOM} = require("jsdom");
+const {JSDOM} = require('jsdom');
+const EventType = require('./event_type');
 
 /** Stocks Details
  * 9: Out of Stock
@@ -23,32 +24,37 @@ class LDLCChecker {
     constructor() {
         fs.access(LDLCChecker.__datafile, fs.constants.F_OK, (err) => {
             if (err) this.saveData();
-            else this.stocks = JSON.parse(fs.readFileSync(LDLCChecker.__datafile, { encoding: 'utf-8' }).toString());
+            else this.stocks = JSON.parse(fs.readFileSync(LDLCChecker.__datafile, {encoding: 'utf-8'}).toString());
         });
 
         this.initFetch();
     }
 
     initFetch() {
-        this.job = new CronJob('0 0/15 * * * *', () => { this.fetchPages() }, null, true, 'Europe/Paris');
+        this.job = new CronJob('0 0/15 * * * *', () => {
+            this.fetchPages()
+        }, null, true, 'Europe/Paris');
         this.fetchPages();
     }
 
     fetchPages() {
-        this.fetchPage('https://www.ldlc.com/informatique/pieces-informatique/carte-graphique-interne/c4684/+fb-C000000806,C000000990,C000000992,C000033842+fv121-19183.html');
-        this.fetchPage('https://www.ldlc.com/informatique/pieces-informatique/carte-graphique-interne/c4684/+fb-C000000806,C000000990,C000000992,C000033842+fv121-19185.html');
-        this.fetchPage('https://www.ldlc.com/informatique/pieces-informatique/processeur/c4300/+fb-C000000805+fv1448-19308+fv160-15394.html');
+        // 3090 cards
+        this.fetchPage('https://www.ldlc.com/informatique/pieces-informatique/carte-graphique-interne/c4684/+fb-C000000806,C000000990,C000000992,C000033842+fv121-19185.html', '3090');
+        // 3080 cards
+        this.fetchPage('https://www.ldlc.com/informatique/pieces-informatique/carte-graphique-interne/c4684/+fb-C000000806,C000000990,C000000992,C000033842+fv121-19183.html', '3080');
+        // AMD zen3 processors
+        this.fetchPage('https://www.ldlc.com/informatique/pieces-informatique/processeur/c4300/+fb-C000000805+fv1448-19308+fv160-15394.html', 'zen3');
     }
 
-    fetchPage(url) {
+    fetchPage(url, product_type) {
         axios
             .get(url)
             .then(({data}) => {
-                this.parsePage(data);
+                this.parsePage(data, product_type);
             });
     }
 
-    parsePage(data) {
+    parsePage(data, product_type) {
         const {document} = (new JSDOM(data)).window;
 
         document.querySelector('header').remove();
@@ -98,20 +104,24 @@ class LDLCChecker {
             }
 
             const product_object = {
+                shop: 'LDLC',
+                product_type,
                 product_name,
                 product_price,
                 product_link: `https://www.ldlc.com${product_link}`,
                 stock_status,
                 stock_raw,
-                stock_text
+                stock_text,
+                in_stock: stock_status !== '9'
             };
 
-            if (!this.stocks[product_id] || stock_status !== this.stocks[product_id].stock_status) {
-                this.callbacks.forEach(callback => callback(product_object));
+            if (this.stocks[product_id]) {
+                if (stock_status !== this.stocks[product_id].stock_status) {
+                    this.callbacks.forEach(callback => callback(product_object, EventType.STOCK_CHANGE));
 
-                console.log(product_name.cyan);
-                console.log('stock status:'.gray, stock_text, 'price:'.gray, `${product_price}€`);
-                console.log(`https://www.ldlc.com${product_link}`);
+                    console.log(product_name.cyan);
+                    console.log('stock status:'.gray, stock_text, 'price:'.gray, `${product_price}€`);
+                }
             }
 
             this.stocks[product_id] = product_object;
@@ -122,6 +132,10 @@ class LDLCChecker {
 
     addEventsCallback(callback) {
         this.callbacks.push(callback);
+    }
+
+    getProducts() {
+        return Object.values(this.stocks);
     }
 
     saveData() {

@@ -24,8 +24,7 @@ class CaseKingChecker {
             if (err) this.saveData();
             else this.stocks = JSON.parse(fs.readFileSync(CaseKingChecker.__datafile, { encoding: 'utf-8' }).toString());
 
-            this.parsePage(html_test);
-            // this.initFetch();
+            this.initFetch();
         });
     }
 
@@ -35,19 +34,23 @@ class CaseKingChecker {
     }
 
     fetchPages() {
-        console.log('start fetch'.red)
-        this.fetchPage('https://www.caseking.de/en/pc-components/graphics-cards/nvidia?ckSuppliers=39-123-64&ckFilters=13916&ckTab=0&sPage=1&sPerPage=48');
+        // 3090 cards
+        this.fetchPage('https://www.caseking.de/en/pc-components/graphics-cards/nvidia?ckSuppliers=39-123-64&ckFilters=13916&ckTab=0&sPage=1&sPerPage=48', '3090');
+        // 3080 cards
+        this.fetchPage('https://www.caseking.de/en/pc-components/graphics-cards/nvidia?ckSuppliers=39-12-64-123&ckFilters=13915&ckTab=0&sSort=103', '3080');
+        // AMD zen3 processors
+        this.fetchPage('https://www.caseking.de/en/pc-components/cpus-processors/amd-processors?ckFilters=14150&ckTab=0&sSort=103', 'zen3');
     }
 
-    fetchPage(url) {
+    fetchPage(url, product_type) {
         axios
             .get(url)
             .then(({data}) => {
-                this.parsePage(data);
+                this.parsePage(data, product_type);
             });
     }
 
-    parsePage(data) {
+    parsePage(data, product_type) {
         const {document} = (new JSDOM(data)).window;
 
         const products = document.querySelectorAll('.artbox')
@@ -77,12 +80,15 @@ class CaseKingChecker {
             }
 
             const product_object = {
+                shop: 'CaseKing',
+                product_type,
                 product_name,
                 product_price,
                 product_link: `${product_link}`,
                 stock_status,
                 stock_raw,
-                stock_text
+                stock_text,
+                in_stock: stock_status !== '4'
             };
 
             if (!this.stocks[product_id] || stock_status !== this.stocks[product_id].stock_status) {
@@ -97,6 +103,14 @@ class CaseKingChecker {
         }
 
         this.saveData();
+    }
+
+    addEventsCallback(callback) {
+        this.callbacks.push(callback);
+    }
+
+    getProducts () {
+        return Object.values(this.stocks);
     }
 
     saveData() {

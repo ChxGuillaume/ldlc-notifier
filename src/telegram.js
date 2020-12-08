@@ -5,8 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const {Telegraf, Telegram} = require('telegraf');
 
-const ldlcChecker = require('./checker/ldlc');
-const caseKingChecker = require('./checker/caseking');
+const checker = require('./checker/checker');
 
 class TelegramBot {
     static __chat_ids_file = path.resolve(__dirname, 'data/chat_ids.json');
@@ -30,7 +29,7 @@ class TelegramBot {
 
         this.initBot();
 
-        ldlcChecker.addEventsCallback((product) => {
+        checker.addEventsCallback((product) => {
             console.log('notification sent!')
             this.broadcastProductUpdate(product);
         });
@@ -56,7 +55,7 @@ class TelegramBot {
             this.addChatID(ctx.from.id);
 
             const sender_name = ctx.from.first_name;
-            ctx.reply(`Hello ${sender_name},\n\nWelcome to our Tech Products Notifier.\nWe are currently checking for stocks of products on http://www.ldlc.com`).then();
+            ctx.reply(`Hello ${sender_name},\n\nWelcome to our Tech Products Notifier.\nWe are currently checking for stocks of products on \n- http://www.ldlc.com\n- https://www.caseking.de/`).then();
         });
 
         this.bot_listener.help((ctx) => ctx.reply('Send me a sticker'));
@@ -156,19 +155,18 @@ class TelegramBot {
     }
 
     sendProductsStocks(products_value, chat_id) {
-        const products = Object.values(ldlcChecker.stocks).filter(e => {
+        const products = checker.getProducts().filter(e => {
             switch (products_value) {
                 case 'product_3090':
-                    return e.product_name.includes('3090');
+                    return e.product_type === '3090';
                 case 'product_3080':
-                    return e.product_name.includes('3080');
+                    return e.product_type === '3080';
                 case 'product_zen3':
-                    return e.product_name.includes('AMD');
+                    return e.product_type === 'zen3';
                 default:
                     return true;
             }
         });
-
 
         for (const product of products) {
             this.sendProductUpdate(chat_id, product, true);
@@ -200,10 +198,12 @@ class TelegramBot {
             else if (product.product_name.includes('AMD')) unsubscribe_check = 'unsubscribe_zen3';
         }
 
-        if ((!this.chats_unsubscribe[chat_id] || !this.chats_unsubscribe[chat_id].includes(unsubscribe_check)) && product.stock_status !== '9')
+        if ((!this.chats_unsubscribe[chat_id] || !this.chats_unsubscribe[chat_id].includes(unsubscribe_check)) && product.in_stock) {
             this.bot.sendMessage(
                 chat_id,
-                `[${product.product_name}](${product.product_link}) \nStatus: ${product.stock_raw}    -    Price: ${product.product_price}€`, {
+                `[${product.product_name} (${product.shop})](${product.product_link})`
+                + `\nStatus: ${product.stock_raw}    -    Price: ${product.product_price}€`, {
+                    disable_web_page_preview: true,
                     parse_mode: 'markdown',
                     reply_markup: {
                         inline_keyboard: [
@@ -216,6 +216,7 @@ class TelegramBot {
                         ]
                     }
                 }).then();
+        }
     }
 
     broadcastProductUpdate(product) {
