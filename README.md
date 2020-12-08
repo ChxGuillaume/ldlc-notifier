@@ -1,5 +1,5 @@
 # 💻 Tech Products Notifier
-## Made with ♥ by Guillaume Chateauroux
+## Made with 💕 by Guillaume Chateauroux
 
 ## 📜 License
 
