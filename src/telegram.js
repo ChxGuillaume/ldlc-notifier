@@ -168,8 +168,12 @@ class TelegramBot {
             }
         });
 
-        for (const product of products) {
-            this.sendProductUpdate(chat_id, product, true);
+        if (!products.length) {
+            this.bot.sendMessage(chat_id, 'No product in stock.').then();
+        } else {
+            for (const product of products) {
+                this.sendProductUpdate(chat_id, product, true);
+            }
         }
     }
 
