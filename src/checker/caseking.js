@@ -88,7 +88,7 @@ class CaseKingChecker {
                 stock_status,
                 stock_raw,
                 stock_text,
-                in_stock: stock_status !== '4'
+                in_stock: stock_status !== '0' && stock_status !== '4'
             };
 
             if (this.stocks[product_id]) {
