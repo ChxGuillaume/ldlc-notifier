@@ -156,15 +156,19 @@ class TelegramBot {
 
     sendProductsStocks(products_value, chat_id) {
         const products = checker.getProducts().filter(e => {
-            switch (products_value) {
-                case 'product_3090':
-                    return e.product_type === '3090';
-                case 'product_3080':
-                    return e.product_type === '3080';
-                case 'product_zen3':
-                    return e.product_type === 'zen3';
-                default:
-                    return true;
+            if (e.in_stock) {
+                switch (products_value) {
+                    case 'product_3090':
+                        return e.product_type === '3090';
+                    case 'product_3080':
+                        return e.product_type === '3080';
+                    case 'product_zen3':
+                        return e.product_type === 'zen3';
+                    default:
+                        return true;
+                }
+            } else {
+                return false;
             }
         });
 
