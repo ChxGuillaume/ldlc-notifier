@@ -35,7 +35,7 @@ class CaseKingChecker {
 
     fetchPages() {
         // 3090 cards
-        this.fetchPage('https://www.caseking.de/en/pc-components/graphics-cards/nvidia?ckSuppliers=39-123-64&ckFilters=13916&ckTab=0&sPage=1&sPerPage=48', '3090');
+        this.fetchPage('https://www.caseking.de/en/pc-components/graphics-cards/nvidia?ckSuppliers=39-64-123-12&n=48&ckFilters=13916&ckTab=0&sSort=103', '3090');
         // 3080 cards
         this.fetchPage('https://www.caseking.de/en/pc-components/graphics-cards/nvidia?ckSuppliers=39-12-64-123&ckFilters=13915&ckTab=0&sSort=103', '3080');
         // AMD zen3 processors
