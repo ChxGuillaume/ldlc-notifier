@@ -2,7 +2,6 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 const colors = require('colors');
-const CronJob = require('cron').CronJob;
 const {JSDOM} = require("jsdom");
 
 /** Stocks Details
@@ -10,8 +9,6 @@ const {JSDOM} = require("jsdom");
  * 2: In Stock
  * 4: Out of Stock
  **/
-
-const html_test = fs.readFileSync(path.resolve(__dirname, 'test/caseking.html'), { encoding: 'utf-8' })
 
 class CaseKingChecker {
     static __datafile = path.resolve(__dirname, 'data/caseking-products.json');
@@ -23,14 +20,7 @@ class CaseKingChecker {
         fs.access(CaseKingChecker.__datafile, fs.constants.F_OK, (err) => {
             if (err) this.saveData();
             else this.stocks = JSON.parse(fs.readFileSync(CaseKingChecker.__datafile, { encoding: 'utf-8' }).toString());
-
-            this.initFetch();
         });
-    }
-
-    initFetch() {
-        this.job = new CronJob('0 0/15 * * * *', () => { this.fetchPages() }, null, true, 'Europe/Paris');
-        this.fetchPages();
     }
 
     fetchPages() {

@@ -2,7 +2,6 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 const colors = require('colors');
-const CronJob = require('cron').CronJob;
 const {JSDOM} = require('jsdom');
 const EventType = require('./event_type');
 
@@ -26,15 +25,6 @@ class LDLCChecker {
             if (err) this.saveData();
             else this.stocks = JSON.parse(fs.readFileSync(LDLCChecker.__datafile, {encoding: 'utf-8'}).toString());
         });
-
-        this.initFetch();
-    }
-
-    initFetch() {
-        this.job = new CronJob('0 0/15 * * * *', () => {
-            this.fetchPages()
-        }, null, true, 'Europe/Paris');
-        this.fetchPages();
     }
 
     fetchPages() {
